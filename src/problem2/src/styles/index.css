@@ -554,6 +554,19 @@ body {
   cursor: not-allowed;
 }
 
+.swap-submit-btn.prompt {
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+  cursor: pointer;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.swap-submit-btn.prompt:hover {
+  background: rgba(99, 102, 241, 0.12);
+  color: #c7d2fe;
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
 .swap-submit-btn.loading {
   background: rgba(99, 102, 241, 0.3);
   color: #c7d2fe;

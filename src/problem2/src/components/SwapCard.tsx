@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   ChevronDown,
   ArrowDownUp,
@@ -44,6 +44,7 @@ export const SwapCard: React.FC<SwapCardProps> = ({
   onExecuteSwap,
 }) => {
   const [showRateInfo, setShowRateInfo] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const numFromAmount = parseFloat(fromAmount) || 0;
   const numToAmount = parseFloat(toAmount) || 0;
@@ -58,9 +59,11 @@ export const SwapCard: React.FC<SwapCardProps> = ({
   // Validation logic
   let isValid = true;
   let validationMessage = 'CONFIRM SWAP';
+  let isPromptState = false;
 
   if (!fromAmount || numFromAmount <= 0) {
     isValid = false;
+    isPromptState = true;
     validationMessage = 'Enter an amount';
   } else if (fromToken.currency === toToken.currency) {
     isValid = false;
@@ -72,8 +75,19 @@ export const SwapCard: React.FC<SwapCardProps> = ({
 
   const handleQuickPercent = (pct: number) => {
     const val = (fromToken.balance * pct).toFixed(6);
-    // Trim unnecessary trailing zeros
     onChangeFromAmount(parseFloat(val).toString());
+    inputRef.current?.focus();
+  };
+
+  const handleActionClick = () => {
+    if (isPromptState) {
+      // Focus input when user clicks "Enter an amount"
+      inputRef.current?.focus();
+      return;
+    }
+    if (isValid && !isSwapping) {
+      onExecuteSwap();
+    }
   };
 
   return (
@@ -93,10 +107,11 @@ export const SwapCard: React.FC<SwapCardProps> = ({
             onClick={onRefreshRates}
             title="Refresh live prices"
             disabled={isRefreshing}
+            type="button"
           >
             <RefreshCw size={17} />
           </button>
-          <button className="icon-btn" onClick={onOpenSettings} title="Settings">
+          <button className="icon-btn" onClick={onOpenSettings} title="Settings" type="button">
             <Settings2 size={17} />
           </button>
         </div>
@@ -131,6 +146,7 @@ export const SwapCard: React.FC<SwapCardProps> = ({
         <div className="token-box-body">
           <input
             id="input-amount"
+            ref={inputRef}
             type="text"
             inputMode="decimal"
             placeholder="0.0"
@@ -259,9 +275,9 @@ export const SwapCard: React.FC<SwapCardProps> = ({
       {/* Main Submit Button */}
       <button
         type="button"
-        className={`swap-submit-btn ${isValid ? 'ready' : 'disabled'} ${isSwapping ? 'loading' : ''}`}
-        disabled={!isValid || isSwapping}
-        onClick={onExecuteSwap}
+        className={`swap-submit-btn ${isValid ? 'ready' : isPromptState ? 'prompt' : 'disabled'} ${isSwapping ? 'loading' : ''}`}
+        disabled={(!isValid && !isPromptState) || isSwapping}
+        onClick={handleActionClick}
       >
         {isSwapping ? 'Processing Order...' : validationMessage}
       </button>

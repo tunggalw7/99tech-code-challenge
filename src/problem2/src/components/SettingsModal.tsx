@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, SlidersHorizontal } from 'lucide-react';
 import { SwapSettings } from '../types';
 
@@ -15,19 +15,90 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onUpdateSettings,
 }) => {
-  if (!isOpen) return null;
-
   const presets = [0.1, 0.5, 1.0];
 
+  // Local string states to allow fluid typing, backspacing, and clearing
+  const [deadlineStr, setDeadlineStr] = useState(settings.deadlineMinutes.toString());
+  const [customSlippageStr, setCustomSlippageStr] = useState(
+    presets.includes(settings.slippage) ? '' : settings.slippage.toString()
+  );
+
+  useEffect(() => {
+    if (isOpen) {
+      setDeadlineStr(settings.deadlineMinutes.toString());
+      setCustomSlippageStr(presets.includes(settings.slippage) ? '' : settings.slippage.toString());
+    }
+  }, [isOpen, settings.deadlineMinutes, settings.slippage]);
+
+  if (!isOpen) return null;
+
+  const handlePresetClick = (val: number) => {
+    setCustomSlippageStr('');
+    onUpdateSettings({ ...settings, slippage: val });
+  };
+
+  const handleCustomSlippageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    // Allow empty string for clearing
+    setCustomSlippageStr(raw);
+
+    const num = parseFloat(raw);
+    if (!isNaN(num) && num > 0 && num <= 50) {
+      onUpdateSettings({ ...settings, slippage: num });
+    }
+  };
+
+  const handleCustomSlippageBlur = () => {
+    const num = parseFloat(customSlippageStr);
+    if (isNaN(num) || num <= 0 || num > 50) {
+      // Revert to default 0.5% preset if invalid or left empty
+      setCustomSlippageStr('');
+      onUpdateSettings({ ...settings, slippage: 0.5 });
+    } else {
+      setCustomSlippageStr(num.toString());
+    }
+  };
+
+  const handleDeadlineChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    // Allow completely clearing the field without snapping back
+    setDeadlineStr(raw);
+
+    const num = parseInt(raw, 10);
+    if (!isNaN(num) && num > 0 && num <= 180) {
+      onUpdateSettings({ ...settings, deadlineMinutes: num });
+    }
+  };
+
+  const handleDeadlineBlur = () => {
+    const num = parseInt(deadlineStr, 10);
+    if (isNaN(num) || num <= 0) {
+      // Fallback to sensible default of 20 minutes if user leaves it blank
+      setDeadlineStr('20');
+      onUpdateSettings({ ...settings, deadlineMinutes: 20 });
+    } else if (num > 180) {
+      setDeadlineStr('180');
+      onUpdateSettings({ ...settings, deadlineMinutes: 180 });
+    } else {
+      setDeadlineStr(num.toString());
+    }
+  };
+
+  const handleSave = () => {
+    handleDeadlineBlur();
+    handleCustomSlippageBlur();
+    onClose();
+  };
+
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={handleSave}>
       <div className="modal-card modal-card-sm" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title-with-icon">
             <SlidersHorizontal size={18} />
             <h3>Transaction Settings</h3>
           </div>
-          <button className="icon-btn" onClick={onClose}>
+          <button className="icon-btn" onClick={handleSave}>
             <X size={18} />
           </button>
         </div>
@@ -41,8 +112,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {presets.map((val) => (
               <button
                 key={val}
-                className={`preset-btn ${settings.slippage === val ? 'active' : ''}`}
-                onClick={() => onUpdateSettings({ ...settings, slippage: val })}
+                className={`preset-btn ${settings.slippage === val && !customSlippageStr ? 'active' : ''}`}
+                onClick={() => handlePresetClick(val)}
+                type="button"
               >
                 {val}%
               </button>
@@ -55,13 +127,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 max="50"
                 className="custom-slippage-input"
                 placeholder="Custom"
-                value={presets.includes(settings.slippage) ? '' : settings.slippage}
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value);
-                  if (!isNaN(val) && val > 0 && val <= 50) {
-                    onUpdateSettings({ ...settings, slippage: val });
-                  }
-                }}
+                value={customSlippageStr}
+                onChange={handleCustomSlippageChange}
+                onBlur={handleCustomSlippageBlur}
               />
               <span className="percent-sign">%</span>
             </div>
@@ -77,21 +145,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <input
               type="number"
               min="1"
-              max="120"
+              max="180"
               className="deadline-input"
-              value={settings.deadlineMinutes}
-              onChange={(e) => {
-                const val = parseInt(e.target.value, 10);
-                if (!isNaN(val) && val > 0) {
-                  onUpdateSettings({ ...settings, deadlineMinutes: val });
-                }
-              }}
+              value={deadlineStr}
+              onChange={handleDeadlineChange}
+              onBlur={handleDeadlineBlur}
+              placeholder="20"
             />
             <span className="deadline-unit">minutes</span>
           </div>
         </div>
 
-        <button className="primary-action-btn" onClick={onClose}>
+        <button className="primary-action-btn" onClick={handleSave} type="button">
           Save Settings
         </button>
       </div>
